@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>GTYUB — Your Personal Video Hub</title>
+<style>
+:root{--bg:#0f0f0f;--panel:#181818;--panel2:#222;--text:#f1f1f1;--muted:#aaa;--line:#303030;--red:#ff0033;--hover:#2a2a2a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px Arial,Helvetica,sans-serif}
+button,input{font:inherit}button{cursor:pointer;border:0;color:inherit}
+.top{height:62px;position:fixed;inset:0 0 auto 0;background:#0f0f0f;display:flex;align-items:center;gap:22px;padding:0 22px;z-index:5;border-bottom:1px solid #202020}
+.brand{display:flex;align-items:center;gap:8px;min-width:205px;font-weight:800;font-size:22px;letter-spacing:-1px}.brand-mark{background:var(--red);width:34px;height:24px;border-radius:8px;display:grid;place-items:center}.brand-mark:after{content:"";border-left:9px solid white;border-top:6px solid transparent;border-bottom:6px solid transparent;margin-left:3px}
+.search{max-width:650px;display:flex;flex:1;margin:auto}.search input{height:40px;flex:1;background:#121212;border:1px solid #333;border-radius:22px 0 0 22px;padding:0 18px;color:white;outline:none}.search input:focus{border-color:#3b75c5}.search button{width:62px;background:#272727;border:1px solid #333;border-left:0;border-radius:0 22px 22px 0;font-size:17px}
+.top-actions{display:flex;gap:10px}.iconbtn{background:transparent;padding:10px;border-radius:50%;font-size:18px}.iconbtn:hover,.navbtn:hover{background:var(--hover)}
+
+.menu-toggle{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;background:transparent;border-radius:10px;font-size:25px;line-height:1;color:var(--text)}
+.menu-toggle:hover{background:var(--hover)}
+.menu-backdrop{position:fixed;inset:62px 0 0;background:#0008;z-index:7;display:none}
+.menu-backdrop.show{display:block}
+.quick-menu{position:fixed;top:70px;left:12px;width:min(270px,calc(100vw - 24px));padding:9px;background:#202020;border:1px solid #383838;border-radius:14px;box-shadow:0 14px 40px #0009;z-index:8;display:none}
+.quick-menu.show{display:block}
+.quick-menu-item{width:100%;display:flex;align-items:center;gap:13px;text-align:left;background:transparent;padding:14px 13px;border-radius:9px;font-weight:700;font-size:15px}
+.quick-menu-item span{width:22px;text-align:center;font-size:19px}
+.quick-menu-item:hover{background:#303030}
+.sidebar{position:fixed;top:62px;bottom:0;left:0;width:224px;padding:14px 12px;overflow:auto;border-right:1px solid #202020}
+.navbtn{width:100%;display:flex;align-items:center;gap:22px;text-align:left;background:transparent;padding:12px 14px;border-radius:10px;margin:2px 0;font-size:14px}.navbtn.active{background:#272727;font-weight:bold}.navbtn span:first-child{width:22px;text-align:center;font-size:18px}
+.side-title{font-size:13px;font-weight:bold;padding:20px 14px 8px}.side-note{color:#888;font-size:12px;line-height:1.5;padding:12px 14px}
+main{margin-left:224px;padding:86px 28px 40px;min-height:100vh}
+.chips{display:flex;gap:10px;overflow:auto;padding:0 0 22px;position:sticky;top:62px;background:var(--bg);z-index:2}
+.chip{white-space:nowrap;background:#272727;padding:9px 14px;border-radius:8px;font-weight:600}.chip.active{background:#f1f1f1;color:#111}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin:4px 0 18px}.section-head h1{font-size:23px;margin:0}.home-actions{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap}.home-actions button{white-space:nowrap}.muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:28px 16px}
+.card{min-width:0;cursor:pointer}.thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;background:#242424;display:block}.card:hover .thumb{border-radius:7px}.meta{display:flex;gap:11px;padding-top:11px}.avatar{width:36px;height:36px;border-radius:50%;object-fit:cover;background:#333;flex-shrink:0}.vtitle{font-size:15px;font-weight:600;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.vchannel,.vstats{color:var(--muted);font-size:13px;margin-top:6px}.empty{border:1px dashed #444;border-radius:16px;padding:42px 22px;text-align:center;max-width:680px;margin:35px auto}.empty h2{margin:0 0 10px}.primary{background:var(--red);color:white;padding:11px 17px;border-radius:22px;font-weight:bold}.secondary{background:#303030;padding:10px 15px;border-radius:20px}.empty .primary{margin-top:14px}
+.modalback{position:fixed;inset:0;background:#000b;z-index:10;display:none;align-items:center;justify-content:center;padding:18px}.modal{width:min(520px,100%);background:#202020;border:1px solid #393939;border-radius:16px;padding:22px;box-shadow:0 15px 60px #0008}.modal h2{margin:0 0 8px}.modal p{color:#bbb;line-height:1.5}.field{margin:16px 0}.field label{display:block;color:#ddd;margin-bottom:8px;font-weight:600}.field input{width:100%;padding:12px 13px;border-radius:8px;border:1px solid #444;background:#111;color:white;outline:none}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.closex{float:right;background:transparent;font-size:22px;color:#aaa}
+.player-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px}.player-frame{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000}.player-title{font-size:20px;line-height:1.4;margin:14px 0}.player-channel{color:#bbb;margin-bottom:20px}.list-row{display:flex;gap:10px;margin-bottom:12px;cursor:pointer}.list-row img{width:145px;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.list-row b{font-size:13px;line-height:1.35}.list-row small{display:block;color:#aaa;margin-top:7px}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#eee;color:#111;padding:12px 18px;border-radius:30px;z-index:20;display:none;box-shadow:0 5px 30px #0008}
+@media(max-width:850px){.sidebar{width:72px;padding:12px 7px}.navbtn{justify-content:center;padding:13px 5px}.navbtn span:last-child,.side-title,.side-note{display:none}.navbtn span:first-child{font-size:20px}main{margin-left:72px;padding:82px 16px 30px}.brand{min-width:auto}.brand-name{display:none}.player-layout{grid-template-columns:1fr}.top{padding:0 12px;gap:12px}.top-actions{gap:0}}
+@media(max-width:560px){.section-head{align-items:flex-start;flex-direction:column;gap:12px}.top{height:56px;padding:0 9px;gap:9px}.menu-toggle{width:36px;height:38px;flex-basis:36px;font-size:23px}.menu-backdrop{top:56px}.quick-menu{top:64px;left:8px}.sidebar{top:56px;width:60px}.navbtn{padding:12px 2px}main{margin-left:60px;padding:74px 12px 25px}.search input{min-width:0}.brand-mark{width:30px}.grid{grid-template-columns:1fr;gap:24px}.chips{top:56px}.top-actions .iconbtn:first-child{display:none}.section-head h1{font-size:20px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+  <div class="brand"><div class="brand-mark"></div><span class="brand-name">GTYUB</span></div>
+  <form class="search" id="searchForm"><input id="searchInput" placeholder="Search your channels" autocomplete="off"><button aria-label="Search">⌕</button></form>
+</header>
+<div class="menu-backdrop" id="menuBackdrop"></div>
+<nav class="quick-menu" id="quickMenu" aria-label="GTYUB quick actions">
+  <button class="quick-menu-item" id="settingsMenu" type="button"><span>⚙</span> API Key Settings</button>
+  <button class="quick-menu-item" id="addMenu" type="button"><span>＋</span> Add channel</button>
+</nav>
+<aside class="sidebar">
+  <button class="navbtn active" data-page="home"><span>⌂</span><span>Home</span></button>
+  <button class="navbtn" data-page="subscriptions"><span>▣</span><span>My Channels</span></button>
+  <button class="navbtn" data-page="watchlater"><span>◷</span><span>Watch Later</span></button>
+  <button class="navbtn" data-page="history"><span>◴</span><span>History</span></button>
+  <div class="side-title">YOUR GTYUB</div>
+  <div id="sideChannels"></div>
+  <div class="side-note">Only videos from channels you add appear here. No Shorts. No unwanted feed.</div>
+</aside>
+<main id="main">
+  <div class="chips" id="chips"><button class="chip active" data-filter="all">All</button><button class="chip" data-filter="recent">Recently uploaded</button></div>
+  <div class="section-head"><h1 id="pageTitle">Home</h1></div>
+  <div id="content"><div class="empty"><h2>Welcome to GTYUB</h2><p>Add your favourite YouTube channels and create a homepage that shows only what you want to watch.</p><button class="primary" id="welcomeAdd">＋ Add your first channel</button></div></div>
+</main>
+<div class="modalback" id="channelModal"><div class="modal">
+<button class="closex" data-close="channelModal">×</button><h2>Add a YouTube channel</h2><p>Paste a channel URL, handle URL (for example youtube.com/@channelname), or channel ID.</p>
+<div class="field"><label for="channelUrl">Channel URL or ID</label><input id="channelUrl" placeholder="https://www.youtube.com/@ChannelName"></div>
+<div class="modal-actions"><button class="secondary" data-close="channelModal">Cancel</button><button class="primary" id="saveChannel">Add channel</button></div>
+</div></div>
+<div class="modalback" id="settingsModal"><div class="modal">
+<button class="closex" data-close="settingsModal">×</button><h2>GTYUB Settings</h2><p>Connect YouTube Data API v3 to load channel videos. Your key is stored in this browser only. Restrict the key to YouTube Data API and your website domain in Google Cloud.</p>
+<div class="field"><label for="apiKey">YouTube Data API key</label><input id="apiKey" type="password" placeholder="Paste your API key"></div>
+<div class="modal-actions"><button class="secondary" data-close="settingsModal">Close</button><button class="primary" id="saveKey">Save API key</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+let apiKey=localStorage.getItem('gtyub_api_key')||'';
+let channels=JSON.parse(localStorage.getItem('gtyub_channels')||'[]');
+let videos=JSON.parse(localStorage.getItem('gtyub_videos')||'[]');
+let watchLater=JSON.parse(localStorage.getItem('gtyub_watchlater')||'[]');
+let history=JSON.parse(localStorage.getItem('gtyub_history')||'[]');
+let currentPage='home', currentFilter='all';
+function persist(){localStorage.setItem('gtyub_channels',JSON.stringify(channels));localStorage.setItem('gtyub_videos',JSON.stringify(videos));localStorage.setItem('gtyub_watchlater',JSON.stringify(watchLater));localStorage.setItem('gtyub_history',JSON.stringify(history))}
+function toast(t){let x=$('#toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',3200)}
+function modal(id){$('#'+id).style.display='flex'}
+function openSettings(){ $('#apiKey').value=apiKey; modal('settingsModal'); }
+window.openSettings=openSettings;
+function closeQuickMenu(){
+  $('#quickMenu').classList.remove('show');
+  $('#menuBackdrop').classList.remove('show');
+  $('#menuToggle').setAttribute('aria-expanded','false');
+}
+$('#menuToggle').onclick=()=>{
+  const isOpen=$('#quickMenu').classList.toggle('show');
+  $('#menuBackdrop').classList.toggle('show',isOpen);
+  $('#menuToggle').setAttribute('aria-expanded',String(isOpen));
+};
+$('#menuBackdrop').onclick=closeQuickMenu;
+$('#settingsMenu').onclick=()=>{closeQuickMenu();openSettings();};
+$('#addMenu').onclick=()=>{closeQuickMenu();modal('channelModal');};
+function closeModal(id){$('#'+id).style.display='none'}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
+$('#welcomeAdd').onclick=()=>modal('channelModal');
+$('#saveKey').onclick=()=>{apiKey=$('#apiKey').value.trim();localStorage.setItem('gtyub_api_key',apiKey);closeModal('settingsModal');toast('API key saved');if(channels.length)refreshAll()};
+$('#saveChannel').onclick=addChannel;
+async function api(path,params){if(!apiKey)throw Error('Add your YouTube API key in Settings first.');let u=new URL('https://www.googleapis.com/youtube/v3/'+path);Object.entries({...params,key:apiKey}).forEach(([k,v])=>u.searchParams.set(k,v));let r=await fetch(u);let d=await r.json();if(!r.ok)throw Error(d.error?.message||'YouTube API request failed');return d}
+function parseInput(raw){raw=raw.trim();let m=raw.match(/youtube\.com\/channel\/(UC[\w-]+)/i);if(m)return {id:m[1]};m=raw.match(/youtube\.com\/@([^/?]+)/i);if(m)return {handle:m[1]};m=raw.match(/youtube\.com\/user\/([^/?]+)/i);if(m)return {username:m[1]};if(/^UC[\w-]{20,}$/.test(raw))return {id:raw};if(raw.startsWith('@'))return {handle:raw.slice(1)};return {handle:raw.replace(/^https?:\/\/(www\.)?youtube\.com\//,'').replace(/^@/,'').split(/[/?]/)[0]}}
+async function addChannel(){let raw=$('#channelUrl').value.trim();if(!raw)return toast('Please paste a channel URL.');if(!apiKey){closeModal('channelModal');modal('settingsModal');toast('First add your YouTube API key in Settings.');return}
+let b=$('#saveChannel');b.disabled=true;b.textContent='Adding…';
+try{let p=parseInput(raw),q={part:'snippet,contentDetails',maxResults:1};if(p.id)q.id=p.id;else if(p.handle)q.forHandle=p.handle;else q.forUsername=p.username;
+let d=await api('channels',q);let c=d.items?.[0];if(!c)throw Error('Channel not found. Check the URL and try again.');
+if(channels.some(x=>x.id===c.id))throw Error('This channel is already added.');
+channels.push({id:c.id,title:c.snippet.title,avatar:c.snippet.thumbnails?.default?.url||'',uploads:c.contentDetails.relatedPlaylists.uploads});persist();$('#channelUrl').value='';closeModal('channelModal');renderSide();toast('Channel added: '+c.snippet.title);await refreshChannel(c.id);
+}catch(e){toast(e.message)}finally{b.disabled=false;b.textContent='Add channel'}}
+async function refreshChannel(id){let c=channels.find(x=>x.id===id);if(!c)return;try{let p=await api('playlistItems',{part:'snippet,contentDetails',playlistId:c.uploads,maxResults:25});let ids=p.items.map(x=>x.contentDetails.videoId).join(',');if(!ids)return;let d=await api('videos',{part:'snippet,contentDetails,statistics',id:ids});let fresh=d.items.filter(v=>v.snippet.liveBroadcastContent!=='upcoming').map(v=>({id:v.id,title:v.snippet.title,channelId:c.id,channel:c.title,avatar:c.avatar,thumb:v.snippet.thumbnails.maxres?.url||v.snippet.thumbnails.high?.url||v.snippet.thumbnails.medium?.url||'',published:v.snippet.publishedAt,views:v.statistics.viewCount||'0',duration:v.contentDetails.duration}));videos=videos.filter(v=>v.channelId!==c.id).concat(fresh);persist();render()}catch(e){toast('Could not refresh '+c.title+': '+e.message)}}
+async function refreshAll(){if(!channels.length)return;toast('Refreshing your channels…');for(let c of channels)await refreshChannel(c.id);toast('Your videos are up to date')}
+function renderSide(){$('#sideChannels').innerHTML=channels.map(c=>`<button class="navbtn" data-channel="${c.id}"><span>◉</span><span>${esc(c.title)}</span></button>`).join('');document.querySelectorAll('[data-channel]').forEach(b=>b.onclick=()=>{currentPage='channel:'+b.dataset.channel;render()})}
+function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function fmtDate(s){let d=new Date(s);return isNaN(d)?'':d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}
+function card(v){let saved=watchLater.includes(v.id);return `<article class="card"><img class="thumb" data-play="${v.id}" src="${esc(v.thumb)}" alt=""><div class="meta"><img class="avatar" src="${esc(v.avatar)}"><div style="min-width:0;flex:1"><div class="vtitle" data-play="${v.id}">${esc(v.title)}</div><div class="vchannel">${esc(v.channel)}</div><div class="vstats">${Number(v.views||0).toLocaleString()} views · ${fmtDate(v.published)}</div></div><button class="iconbtn" title="${saved?'Remove from':'Add to'} Watch Later" data-save="${v.id}">${saved?'✓':'⋮'}</button></div></article>`}
+function bindCards(){document.querySelectorAll('[data-play]').forEach(x=>x.onclick=()=>play(x.dataset.play));document.querySelectorAll('[data-save]').forEach(x=>x.onclick=e=>{e.stopPropagation();let id=x.dataset.save;watchLater=watchLater.includes(id)?watchLater.filter(a=>a!==id):[...watchLater,id];persist();render();toast('Watch Later updated')})}
+function render(){let list=[...videos].sort((a,b)=>new Date(b.published)-new Date(a.published));let title='Home';
+if(currentPage==='subscriptions')title='My Channels';
+if(currentPage==='watchlater'){title='Watch Later';list=list.filter(v=>watchLater.includes(v.id))}
+if(currentPage==='history'){title='History';list=history.map(id=>videos.find(v=>v.id===id)).filter(Boolean)}
+if(currentPage.startsWith('channel:')){let c=channels.find(x=>x.id===currentPage.split(':')[1]);title=c?.title||'Channel';list=list.filter(v=>v.channelId===currentPage.split(':')[1])}
+if(currentPage==='subscriptions')list=list.filter(v=>channels.some(c=>c.id===v.channelId));
+let q=$('#searchInput').value.trim().toLowerCase();if(q)list=list.filter(v=>(v.title+' '+v.channel).toLowerCase().includes(q));
+$('#pageTitle').textContent=title;
+$('#chips').style.display=currentPage==='home'?'flex':'none';
+$('#content').innerHTML=list.length?`<div class="grid">${list.map(card).join('')}</div>`:`<div class="empty"><h2>${channels.length?'No videos to show yet':'Your GTYUB is ready'}</h2><p>${channels.length?'Try refreshing your channels, or check your API key and quota.':'Add your favourite channels to build your personal video homepage.'}</p><button class="primary" id="emptyAction">${channels.length?'↻ Refresh videos':'＋ Add channel'}</button></div>`;
+let a=$('#emptyAction');if(a)a.onclick=()=>channels.length?refreshAll():modal('channelModal');bindCards();
+document.querySelectorAll('.navbtn[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===currentPage));
+}
+function play(id){let v=videos.find(x=>x.id===id);if(!v)return;history=[id,...history.filter(x=>x!==id)].slice(0,100);persist();let related=videos.filter(x=>x.id!==id).slice(0,10);
+$('#chips').style.display='none';$('#pageTitle').textContent='Now Playing';
+$('#content').innerHTML=`<div class="player-layout"><section><iframe class="player-frame" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0" title="${esc(v.title)}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><div class="player-title">${esc(v.title)}</div><div class="player-channel">${esc(v.channel)} · ${Number(v.views||0).toLocaleString()} views · ${fmtDate(v.published)}</div><button class="secondary" id="playerSave">${watchLater.includes(id)?'✓ Saved to Watch Later':'＋ Watch Later'}</button></section><aside>${related.map(x=>`<div class="list-row" data-play="${x.id}"><img src="${esc(x.thumb)}"><div><b>${esc(x.title)}</b><small>${esc(x.channel)}</small></div></div>`).join('')}</aside></div>`;
+$('#playerSave').onclick=()=>{watchLater=watchLater.includes(id)?watchLater.filter(x=>x!==id):[...watchLater,id];persist();$('#playerSave').textContent=watchLater.includes(id)?'✓ Saved to Watch Later':'＋ Watch Later'};
+document.querySelectorAll('.list-row [data-play],.list-row').forEach(x=>x.onclick=()=>play(x.dataset.play||x.getAttribute('data-play')));
+}
+document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{currentPage=b.dataset.page;$('#searchInput').value='';render()});
+$('#searchForm').onsubmit=e=>{e.preventDefault();currentPage='home';render()};
+document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{currentFilter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));if(currentFilter==='recent')videos.sort((a,b)=>new Date(b.published)-new Date(a.published));render()});
+renderSide();render();
+if(apiKey&&channels.length&&!videos.length)refreshAll();
+</script>
+</body>
+</html>
