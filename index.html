@@ -81,6 +81,7 @@ main{margin-left:0;width:100%;padding:86px 28px 40px;min-height:100vh}
   <div class="menu-divider"></div>
   <button class="quick-menu-item" id="settingsMenu" type="button"><span>⚙</span> API Key Settings</button>
   <button class="quick-menu-item" id="addMenu" type="button"><span>＋</span> Add channel</button>
+  <button class="quick-menu-item" id="refreshMenu" type="button"><span>↻</span> Refresh new videos</button>
 </nav>
 <main id="main">
   <div class="chips" id="chips"><button class="chip active" data-filter="all">All</button><button class="chip" data-filter="recent">Recently uploaded</button></div>
@@ -106,6 +107,7 @@ let videos=JSON.parse(localStorage.getItem('gtyub_videos')||'[]');
 let watchLater=JSON.parse(localStorage.getItem('gtyub_watchlater')||'[]');
 let history=JSON.parse(localStorage.getItem('gtyub_history')||'[]');
 let currentPage='home', currentFilter='all';
+let lastRefresh=Number(localStorage.getItem('gtyub_last_refresh')||0);
 function persist(){localStorage.setItem('gtyub_channels',JSON.stringify(channels));localStorage.setItem('gtyub_videos',JSON.stringify(videos));localStorage.setItem('gtyub_watchlater',JSON.stringify(watchLater));localStorage.setItem('gtyub_history',JSON.stringify(history))}
 function toast(t){let x=$('#toast');x.textContent=t;x.style.display='block';setTimeout(()=>x.style.display='none',3200)}
 function modal(id){$('#'+id).style.display='flex'}
@@ -124,6 +126,7 @@ $('#menuToggle').onclick=()=>{
 $('#menuBackdrop').onclick=closeQuickMenu;
 $('#settingsMenu').onclick=()=>{closeQuickMenu();openSettings();};
 $('#addMenu').onclick=()=>{closeQuickMenu();modal('channelModal');};
+$('#refreshMenu').onclick=()=>{closeQuickMenu();refreshAll(true);};
 function closeModal(id){$('#'+id).style.display='none'}
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));
 $('#welcomeAdd').onclick=()=>modal('channelModal');
@@ -138,8 +141,27 @@ let d=await api('channels',q);let c=d.items?.[0];if(!c)throw Error('Channel not 
 if(channels.some(x=>x.id===c.id))throw Error('This channel is already added.');
 channels.push({id:c.id,title:c.snippet.title,avatar:c.snippet.thumbnails?.default?.url||'',uploads:c.contentDetails.relatedPlaylists.uploads});persist();$('#channelUrl').value='';closeModal('channelModal');renderSide();toast('Channel added: '+c.snippet.title);await refreshChannel(c.id);
 }catch(e){toast(e.message)}finally{b.disabled=false;b.textContent='Add channel'}}
-async function refreshChannel(id){let c=channels.find(x=>x.id===id);if(!c)return;try{let p=await api('playlistItems',{part:'snippet,contentDetails',playlistId:c.uploads,maxResults:25});let ids=p.items.map(x=>x.contentDetails.videoId).join(',');if(!ids)return;let d=await api('videos',{part:'snippet,contentDetails,statistics',id:ids});let fresh=d.items.filter(v=>v.snippet.liveBroadcastContent!=='upcoming').map(v=>({id:v.id,title:v.snippet.title,channelId:c.id,channel:c.title,avatar:c.avatar,thumb:v.snippet.thumbnails.maxres?.url||v.snippet.thumbnails.high?.url||v.snippet.thumbnails.medium?.url||'',published:v.snippet.publishedAt,views:v.statistics.viewCount||'0',duration:v.contentDetails.duration}));videos=videos.filter(v=>v.channelId!==c.id).concat(fresh);persist();render()}catch(e){toast('Could not refresh '+c.title+': '+e.message)}}
-async function refreshAll(){if(!channels.length)return;toast('Refreshing your channels…');for(let c of channels)await refreshChannel(c.id);toast('Your videos are up to date')}
+async function refreshChannel(id){
+  let c=channels.find(x=>x.id===id);if(!c)return false;
+  try{
+    let p=await api('playlistItems',{part:'snippet,contentDetails',playlistId:c.uploads,maxResults:25});
+    let ids=(p.items||[]).map(x=>x.contentDetails.videoId).filter(Boolean).join(',');
+    if(!ids)return true;
+    let d=await api('videos',{part:'snippet,contentDetails,statistics',id:ids});
+    let fresh=(d.items||[]).filter(v=>v.snippet.liveBroadcastContent!=='upcoming').map(v=>({id:v.id,title:v.snippet.title,channelId:c.id,channel:c.title,avatar:c.avatar,thumb:v.snippet.thumbnails.maxres?.url||v.snippet.thumbnails.high?.url||v.snippet.thumbnails.medium?.url||'',published:v.snippet.publishedAt,views:v.statistics.viewCount||'0',duration:v.contentDetails.duration}));
+    videos=videos.filter(v=>v.channelId!==c.id).concat(fresh);
+    persist();render();return true;
+  }catch(e){toast('Could not refresh '+c.title+': '+e.message);return false}
+}
+async function refreshAll(showMessage=true){
+  if(!channels.length){if(showMessage)toast('First add a channel.');return}
+  const btn=$('#refreshMenu');if(btn){btn.disabled=true;btn.innerHTML='<span>↻</span> Refreshing…'}
+  if(showMessage)toast('Checking for new uploads…');
+  let ok=0;for(let c of channels){if(await refreshChannel(c.id))ok++}
+  if(ok===channels.length){lastRefresh=Date.now();localStorage.setItem('gtyub_last_refresh',String(lastRefresh));if(showMessage)toast('Updated! Latest channel videos are loaded.')}
+  else if(showMessage)toast('Some channels could not refresh. Check API key/quota and try again.');
+  if(btn){btn.disabled=false;btn.innerHTML='<span>↻</span> Refresh new videos'}
+}
 function renderSide(){
   const target=$('#menuChannels');if(!target)return;
   target.innerHTML=channels.length?channels.map(c=>`<button class="menu-channel-item" data-channel="${c.id}"><img src="${esc(c.avatar||'')}" alt=""><span>${esc(c.title)}</span></button>`).join(''):'<div class="menu-no-channels">No channels added yet</div>';
@@ -164,35 +186,4 @@ function renderChannelManager(){
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function fmtDate(s){let d=new Date(s);return isNaN(d)?'':d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}
 function card(v){let saved=watchLater.includes(v.id);return `<article class="card"><img class="thumb" data-play="${v.id}" src="${esc(v.thumb)}" alt=""><div class="meta"><img class="avatar" src="${esc(v.avatar)}"><div style="min-width:0;flex:1"><div class="vtitle" data-play="${v.id}">${esc(v.title)}</div><div class="vchannel">${esc(v.channel)}</div><div class="vstats">${Number(v.views||0).toLocaleString()} views · ${fmtDate(v.published)}</div></div><button class="iconbtn" title="${saved?'Remove from':'Add to'} Watch Later" data-save="${v.id}">${saved?'✓':'⋮'}</button></div></article>`}
-function bindCards(){document.querySelectorAll('[data-play]').forEach(x=>x.onclick=()=>play(x.dataset.play));document.querySelectorAll('[data-save]').forEach(x=>x.onclick=e=>{e.stopPropagation();let id=x.dataset.save;watchLater=watchLater.includes(id)?watchLater.filter(a=>a!==id):[...watchLater,id];persist();render();toast('Watch Later updated')})}
-function render(){let list=[...videos].sort((a,b)=>new Date(b.published)-new Date(a.published));let title='Home';
-if(currentPage==='subscriptions')title='My Channels';
-if(currentPage==='watchlater'){title='Watch Later';list=list.filter(v=>watchLater.includes(v.id))}
-if(currentPage==='history'){title='History';list=history.map(id=>videos.find(v=>v.id===id)).filter(Boolean)}
-if(currentPage.startsWith('channel:')){let c=channels.find(x=>x.id===currentPage.split(':')[1]);title=c?.title||'Channel';list=list.filter(v=>v.channelId===currentPage.split(':')[1])}
-if(currentPage==='subscriptions')list=list.filter(v=>channels.some(c=>c.id===v.channelId));
-let q=$('#searchInput').value.trim().toLowerCase();if(q)list=list.filter(v=>(v.title+' '+v.channel).toLowerCase().includes(q));
-$('#pageTitle').textContent=title;
-$('#chips').style.display=currentPage==='home'?'flex':'none';
-const manager=renderChannelManager();
-$('#content').innerHTML=manager+(list.length?`<div class="grid">${list.map(card).join('')}</div>`:(currentPage==='subscriptions'&&channels.length?'':`<div class="empty"><h2>${channels.length?'No videos to show yet':'Your GTYUB is ready'}</h2><p>${channels.length?'Try refreshing your channels, or check your API key and quota.':'Add your favourite channels to build your personal video homepage.'}</p><button class="primary" id="emptyAction">${channels.length?'↻ Refresh videos':'＋ Add channel'}</button></div>`));
-let a=$('#emptyAction');if(a)a.onclick=()=>channels.length?refreshAll():modal('channelModal');
-document.querySelectorAll('[data-remove-channel]').forEach(b=>b.onclick=()=>removeChannel(b.dataset.removeChannel));
-document.querySelectorAll('[data-open-channel]').forEach(b=>b.onclick=()=>{currentPage='channel:'+b.dataset.openChannel;render()});
-bindCards();
-document.querySelectorAll('.menu-nav-item[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===currentPage));
-}
-function play(id){let v=videos.find(x=>x.id===id);if(!v)return;history=[id,...history.filter(x=>x!==id)].slice(0,100);persist();let related=videos.filter(x=>x.id!==id).slice(0,10);
-$('#chips').style.display='none';$('#pageTitle').textContent='Now Playing';
-$('#content').innerHTML=`<div class="player-layout"><section><iframe class="player-frame" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&rel=0" title="${esc(v.title)}" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe><div class="player-title">${esc(v.title)}</div><div class="player-channel">${esc(v.channel)} · ${Number(v.views||0).toLocaleString()} views · ${fmtDate(v.published)}</div><button class="secondary" id="playerSave">${watchLater.includes(id)?'✓ Saved to Watch Later':'＋ Watch Later'}</button></section><aside>${related.map(x=>`<div class="list-row" data-play="${x.id}"><img src="${esc(x.thumb)}"><div><b>${esc(x.title)}</b><small>${esc(x.channel)}</small></div></div>`).join('')}</aside></div>`;
-$('#playerSave').onclick=()=>{watchLater=watchLater.includes(id)?watchLater.filter(x=>x!==id):[...watchLater,id];persist();$('#playerSave').textContent=watchLater.includes(id)?'✓ Saved to Watch Later':'＋ Watch Later'};
-document.querySelectorAll('.list-row [data-play],.list-row').forEach(x=>x.onclick=()=>play(x.dataset.play||x.getAttribute('data-play')));
-}
-document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{currentPage=b.dataset.page;$('#searchInput').value='';closeQuickMenu();render()});
-$('#searchForm').onsubmit=e=>{e.preventDefault();currentPage='home';render()};
-document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{currentFilter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('active',x===b));if(currentFilter==='recent')videos.sort((a,b)=>new Date(b.published)-new Date(a.published));render()});
-renderSide();render();
-if(apiKey&&channels.length&&!videos.length)refreshAll();
-</script>
-</body>
-</html>
+function bindCards(){document.querySelectorAll('[data-play]').forEach(x=>x.onclick=()=>play(x.datase
